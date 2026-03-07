@@ -92,7 +92,13 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-        volumeMounts: []
-      volumes: []
+        volumeMounts:
+        - name: workflows-config
+          mountPath: /etc/workflows
+          readOnly: true
+      volumes:
+      - name: workflows-config
+        configMap:
+          name: workflows-config
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

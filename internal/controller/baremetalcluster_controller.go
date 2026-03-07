@@ -33,8 +33,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	v1alpha1 "github.com/ajamias/bare-metal-operator/api/v1alpha1"
+	"github.com/ajamias/bare-metal-operator/api/v1alpha1"
 	"github.com/ajamias/bare-metal-operator/internal/inventory"
+	"github.com/ajamias/bare-metal-operator/internal/workflow"
 )
 
 // BareMetalClusterReconciler reconciles a BareMetalCluster object
@@ -144,6 +145,17 @@ func (r *BareMetalClusterReconciler) handleUpdate(ctx context.Context, bareMetal
 
 	if bareMetalCluster.Status.HostSets == nil {
 		bareMetalCluster.Status.HostSets = []v1alpha1.HostSet{}
+	}
+
+	err := workflow.Validate(bareMetalCluster.Spec.Workflow)
+	if err != nil {
+		log.Error(err, "Failed to verify workflows")
+		bareMetalCluster.SetStatusCondition(
+			v1alpha1.BareMetalClusterConditionTypeHostsReady,
+			metav1.ConditionFalse,
+			v1alpha1.BareMetalClusterReasonInventoryServiceFailed,
+			"Failed to verify workflows",
+		)
 	}
 
 	// positive delta means add hosts of the HostClass, negative means remove
@@ -265,13 +277,27 @@ func (r *BareMetalClusterReconciler) handleUpdate(ctx context.Context, bareMetal
 		return ctrl.Result{}, err
 	}
 
-	log.Info("Successfully attached/detached all hosts")
+	log.Info("Successfully set up all hosts")
 	bareMetalCluster.SetStatusCondition(
 		v1alpha1.BareMetalClusterConditionTypeHostsReady,
 		metav1.ConditionTrue,
 		v1alpha1.BareMetalClusterReasonHostsAvailable,
-		"Successfully attached/detached all hosts",
+		"Successfully set up all hosts",
 	)
+
+	err = workflow.RunOnEvent(ctx, bareMetalCluster.Spec.Workflow, workflow.EventClusterCreate)
+	if err != nil {
+		log.Error(err, "Failed to set up cluster")
+		bareMetalCluster.SetStatusCondition(
+			v1alpha1.BareMetalClusterConditionTypeHostsReady,
+			metav1.ConditionFalse,
+			v1alpha1.BareMetalClusterReasonHostOperationFailed,
+			"Failed to set up cluster",
+		)
+		return ctrl.Result{}, err
+	}
+
+	log.Info("Successfully set up cluster")
 
 	return ctrl.Result{}, nil
 }
@@ -287,6 +313,18 @@ func (r *BareMetalClusterReconciler) handleDeletion(ctx context.Context, bareMet
 		v1alpha1.BareMetalClusterReasonHostsDeleting,
 		"BareMetalCluster's hosts are being freed",
 	)
+
+	err := workflow.RunOnEvent(ctx, bareMetalCluster.Spec.Workflow, workflow.EventClusterDelete)
+	if err != nil {
+		log.Error(err, "Failed to tear down cluster")
+		bareMetalCluster.SetStatusCondition(
+			v1alpha1.BareMetalClusterConditionTypeHostsReady,
+			metav1.ConditionFalse,
+			v1alpha1.BareMetalClusterReasonHostOperationFailed,
+			"Failed to tear down cluster",
+		)
+		return err
+	}
 
 	hostClassToCurrentHostSetSize := map[string]int{}
 	for _, hostSet := range bareMetalCluster.Status.HostSets {
@@ -347,7 +385,6 @@ func (r *BareMetalClusterReconciler) handleDeletion(ctx context.Context, bareMet
 	bareMetalCluster.Status.HostSets = updatedHostSets
 
 	close(resultErrors)
-	var err error
 	for err = range resultErrors {
 		log.Error(err, "Failed to detach host during deletion")
 	}
@@ -576,7 +613,13 @@ func (r *BareMetalClusterReconciler) markAndAttachHost(
 		return err
 	}
 
-	log.Info("Successfully attached host", "NodeId", host.NodeId)
+	err = workflow.RunOnEvent(ctx, bareMetalCluster.Spec.Workflow, workflow.EventHostCreate)
+	if err != nil {
+		log.Error(err, "Failed to set up host")
+		return err
+	}
+
+	log.Info("Successfully set up host", "NodeId", host.NodeId)
 
 	return nil
 }
@@ -590,8 +633,14 @@ func (r *BareMetalClusterReconciler) unmarkAndDetachHost(
 	log := logf.FromContext(ctx).V(1)
 	ctx = logf.IntoContext(ctx, log)
 
+	err := workflow.RunOnEvent(ctx, bareMetalCluster.Spec.Workflow, workflow.EventHostDelete)
+	if err != nil {
+		log.Error(err, "Failed to tear down hosts")
+		return err
+	}
+
 	// delete Host CRs
-	err := r.DeleteAllOf(
+	err = r.DeleteAllOf(
 		ctx,
 		&v1alpha1.TestHost{},
 		client.InNamespace(bareMetalCluster.Namespace),
