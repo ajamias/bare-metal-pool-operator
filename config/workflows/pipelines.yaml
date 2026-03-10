@@ -1,0 +1,63 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: provision-host
+spec:
+  params:
+    - name: hostId
+      type: string
+    - name: imageURL
+      type: string
+    - name: network
+      type: string
+  tasks:
+    - name: host-image-provision
+      taskRef:
+        name: host-image-provision
+      params:
+        - name: hostId
+          value: "$(params.hostId)"
+        - name: imageURL
+          value: "$(params.imageURL)"
+    - name: host-network-attach
+      taskRef:
+        name: host-network-attach
+      params:
+        - name: hostId
+          value: "$(params.hostId)"
+        - name: network
+          value: "$(params.network)"
+    - name: host-power-on
+      runAfter:
+        - host-image-provision
+      taskRef:
+        name: host-power-on
+      params:
+        - name: hostId
+          value: "$(params.hostId)"
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: deprovision-host
+spec:
+  params:
+    - name: hostId
+      type: string
+    - name: network
+      type: string
+  tasks:
+    - name: host-image-deprovision
+      taskRef:
+        name: host-image-deprovision
+      params:
+        - name: hostId
+          value: "$(params.hostId)"
+    - name: host-network-detach
+      taskRef:
+        name: host-network-detach
+      params:
+        - name: hostId
+          value: "$(params.hostId)"
+        - name: network
+          value: "$(params.network)"

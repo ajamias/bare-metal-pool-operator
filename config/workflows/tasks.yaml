@@ -1,0 +1,135 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: host-power-on
+  namespace: system
+spec:
+  displayName: Power on the host
+  params:
+    - name: hostId
+      type: string
+      description: The ID of the host to power on
+  steps:
+    - name: power-on
+      image: alpine
+      command:
+        - "echo power on"
+#        - "power"
+#      args:
+#        - "on"
+#        - "$(params.hostId)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: host-power-off
+  namespace: system
+spec:
+  displayName: Power off the host
+  params:
+    - name: hostId
+      type: string
+      description: The ID of the host to power off
+  steps:
+    - name: power-off
+      image: alpine
+      command:
+        - "echo power off"
+#        - "power"
+#      args:
+#        - "off"
+#        - "$(params.hostId)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: host-image-provision
+  namespace: system
+spec:
+  displayName: Provision the host with an image
+  params:
+    - name: hostId
+      type: string
+      description: The ID of the host to provision
+    - name: imageURL
+      type: string
+      description: The URL to the image
+  steps:
+    - name: provision-with-image
+      image: alpine
+      command:
+        - "echo provision"
+#        - "provision"
+#      args:
+#        - "$(params.hostId)"
+#        - "$(params.imageURL)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: host-image-deprovision
+  namespace: system
+spec:
+  displayName: Deprovision the host with an image
+  params:
+    - name: hostId
+      type: string
+      description: The ID of the host to provision
+  steps:
+    - name: provision-with-image
+      image: alpine
+      command:
+        - "echo deprovision"
+#        - "deprovision"
+#      args:
+#        - "$(params.hostId)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: host-network-attach
+  namespace: system
+spec:
+  displayName: Attach the host to a network
+  params:
+    - name: hostId
+      type: string
+      description: The ID of the host to provision
+    - name: network
+      type: string
+      description: The network to attach the host to
+  steps:
+    - name: attach-to-network
+      image: alpine
+      command:
+        - "echo network attach"
+#        - "network"
+#      args:
+#        - "attach"
+#        - "$(params.hostId)"
+#        - "$(params.network)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: host-network-detach
+  namespace: system
+spec:
+  displayName: Attach the host to a network
+  params:
+    - name: hostId
+      type: string
+      description: The ID of the host to provision
+    - name: network
+      type: string
+      description: The network to detach the host from
+  steps:
+    - name: detach-from-network
+      image: alpine
+      command:
+        - "echo network detach"
+#        - "network"
+#      args:
+#        - "detach"
+#        - "$(params.hostId)"
+#        - "$(params.network)"

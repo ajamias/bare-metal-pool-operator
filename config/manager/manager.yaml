@@ -93,12 +93,12 @@ spec:
             cpu: 10m
             memory: 64Mi
         volumeMounts:
-        - name: workflows-config
-          mountPath: /etc/workflows
+        - name: profiles-config
+          mountPath: /etc/profiles
           readOnly: true
       volumes:
-      - name: workflows-config
+      - name: profiles-config
         configMap:
-          name: workflows-config
+          name: profiles-config
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

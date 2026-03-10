@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +36,7 @@ import (
 
 	"github.com/ajamias/bare-metal-operator/api/v1alpha1"
 	"github.com/ajamias/bare-metal-operator/internal/inventory"
-	"github.com/ajamias/bare-metal-operator/internal/workflow"
+	"github.com/ajamias/bare-metal-operator/internal/profile"
 )
 
 // BareMetalClusterReconciler reconciles a BareMetalCluster object
@@ -53,6 +54,7 @@ type contextKey string
 // +kubebuilder:rbac:groups=osac.openshift.io,resources=baremetalclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=osac.openshift.io,resources=baremetalclusters/finalizers,verbs=update
 // +kubebuilder:rbac:groups=osac.openshift.io,resources=testhosts,verbs=get;list;watch;create;update;patch;delete;deletecollection
+// +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -145,17 +147,6 @@ func (r *BareMetalClusterReconciler) handleUpdate(ctx context.Context, bareMetal
 
 	if bareMetalCluster.Status.HostSets == nil {
 		bareMetalCluster.Status.HostSets = []v1alpha1.HostSet{}
-	}
-
-	err := workflow.Validate(bareMetalCluster.Spec.Workflow)
-	if err != nil {
-		log.Error(err, "Failed to verify workflows")
-		bareMetalCluster.SetStatusCondition(
-			v1alpha1.BareMetalClusterConditionTypeHostsReady,
-			metav1.ConditionFalse,
-			v1alpha1.BareMetalClusterReasonInventoryServiceFailed,
-			"Failed to verify workflows",
-		)
 	}
 
 	// positive delta means add hosts of the HostClass, negative means remove
@@ -285,16 +276,19 @@ func (r *BareMetalClusterReconciler) handleUpdate(ctx context.Context, bareMetal
 		"Successfully set up all hosts",
 	)
 
-	err = workflow.RunOnEvent(ctx, bareMetalCluster.Spec.Workflow, workflow.EventClusterCreate)
-	if err != nil {
-		log.Error(err, "Failed to set up cluster")
-		bareMetalCluster.SetStatusCondition(
-			v1alpha1.BareMetalClusterConditionTypeHostsReady,
-			metav1.ConditionFalse,
-			v1alpha1.BareMetalClusterReasonHostOperationFailed,
-			"Failed to set up cluster",
-		)
-		return ctrl.Result{}, err
+	registeredProfile, ok := profile.Get(bareMetalCluster.Spec.Profile.Name)
+	if ok {
+		err = r.runWorkflow(ctx, bareMetalCluster, registeredProfile.ClusterSetUpWorkflow)
+		if err != nil {
+			log.Error(err, "Failed to set up cluster")
+			bareMetalCluster.SetStatusCondition(
+				v1alpha1.BareMetalClusterConditionTypeHostsReady,
+				metav1.ConditionFalse,
+				v1alpha1.BareMetalClusterReasonHostOperationFailed,
+				"Failed to set up cluster",
+			)
+			return ctrl.Result{}, err
+		}
 	}
 
 	log.Info("Successfully set up cluster")
@@ -314,17 +308,22 @@ func (r *BareMetalClusterReconciler) handleDeletion(ctx context.Context, bareMet
 		"BareMetalCluster's hosts are being freed",
 	)
 
-	err := workflow.RunOnEvent(ctx, bareMetalCluster.Spec.Workflow, workflow.EventClusterDelete)
-	if err != nil {
-		log.Error(err, "Failed to tear down cluster")
-		bareMetalCluster.SetStatusCondition(
-			v1alpha1.BareMetalClusterConditionTypeHostsReady,
-			metav1.ConditionFalse,
-			v1alpha1.BareMetalClusterReasonHostOperationFailed,
-			"Failed to tear down cluster",
-		)
-		return err
+	registeredProfile, ok := profile.Get(bareMetalCluster.Spec.Profile.Name)
+	if ok {
+		err := r.runWorkflow(ctx, bareMetalCluster, registeredProfile.ClusterTearDownWorkflow)
+		if err != nil {
+			log.Error(err, "Failed to tear down cluster")
+			bareMetalCluster.SetStatusCondition(
+				v1alpha1.BareMetalClusterConditionTypeHostsReady,
+				metav1.ConditionFalse,
+				v1alpha1.BareMetalClusterReasonHostOperationFailed,
+				"Failed to tear down cluster",
+			)
+			return err
+		}
 	}
+
+	var err error
 
 	hostClassToCurrentHostSetSize := map[string]int{}
 	for _, hostSet := range bareMetalCluster.Status.HostSets {
@@ -613,10 +612,13 @@ func (r *BareMetalClusterReconciler) markAndAttachHost(
 		return err
 	}
 
-	err = workflow.RunOnEvent(ctx, bareMetalCluster.Spec.Workflow, workflow.EventHostCreate)
-	if err != nil {
-		log.Error(err, "Failed to set up host")
-		return err
+	registeredProfile, ok := profile.Get(bareMetalCluster.Spec.Profile.Name)
+	if ok {
+		err = r.runWorkflow(ctx, bareMetalCluster, registeredProfile.HostSetUpWorkflow)
+		if err != nil {
+			log.Error(err, "Failed to set up host")
+			return err
+		}
 	}
 
 	log.Info("Successfully set up host", "NodeId", host.NodeId)
@@ -633,11 +635,15 @@ func (r *BareMetalClusterReconciler) unmarkAndDetachHost(
 	log := logf.FromContext(ctx).V(1)
 	ctx = logf.IntoContext(ctx, log)
 
-	err := workflow.RunOnEvent(ctx, bareMetalCluster.Spec.Workflow, workflow.EventHostDelete)
-	if err != nil {
-		log.Error(err, "Failed to tear down hosts")
-		return err
+	registeredProfile, ok := profile.Get(bareMetalCluster.Spec.Profile.Name)
+	if ok {
+		err := r.runWorkflow(ctx, bareMetalCluster, registeredProfile.HostTearDownWorkflow)
+		if err != nil {
+			log.Error(err, "Failed to tear down hosts")
+			return err
+		}
 	}
+	var err error
 
 	// delete Host CRs
 	err = r.DeleteAllOf(
@@ -682,6 +688,51 @@ func (r *BareMetalClusterReconciler) unmarkAndDetachHost(
 	mutex.Unlock()
 
 	log.Info("Successfully detached host", "NodeId", host.NodeId)
+
+	return nil
+}
+
+// runWorkflow runs a workflow by creating a Tekton PipelineRun
+func (r *BareMetalClusterReconciler) runWorkflow(ctx context.Context, bareMetalCluster *v1alpha1.BareMetalCluster, workflowReference profile.WorkflowReference) error {
+	log := logf.FromContext(ctx)
+	pfName := bareMetalCluster.Spec.Profile.Name
+	pfParams := bareMetalCluster.Spec.Profile.Input
+
+	if workflowReference.String() == "" {
+		log.Info("Skipping workflow")
+		return nil
+	}
+
+	// Create PipelineRun
+	pipelineRunName := fmt.Sprintf("%s-%s", workflowReference.String(), rand.String(8))
+	pipelineRun := &tektonv1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pipelineRunName,
+			Namespace: bareMetalCluster.Namespace,
+			Labels: map[string]string{
+				"osac.openshift.io/cluster-id": string(bareMetalCluster.UID),
+				"osac.openshift.io/profile":    pfName,
+			},
+		},
+		Spec: tektonv1.PipelineRunSpec{
+			PipelineRef: &workflowReference.WorkflowRef,
+			Params:      pfParams,
+		},
+	}
+
+	// Set owner reference so PipelineRun is deleted when BareMetalCluster is deleted
+	err := controllerutil.SetControllerReference(bareMetalCluster, pipelineRun, r.Scheme)
+	if err != nil {
+		return err
+	}
+
+	// Create the PipelineRun
+	err = r.Create(ctx, pipelineRun)
+	if err != nil {
+		return err
+	}
+
+	log.Info("Created PipelineRun", "name", pipelineRunName)
 
 	return nil
 }

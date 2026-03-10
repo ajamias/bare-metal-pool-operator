@@ -1,0 +1,21 @@
+# This is an example config the controller will see in a configmap
+- name: provision-host
+  matchHosts:
+    managedBy: none
+  setHostProperties:
+    managedBy: agent
+  expectedInput:
+    - name: hostId
+      type: string
+    - name: imageURL
+      type: string
+    - name: network
+      type: string
+  hostSetUp:
+    workflowRef:
+      name: provision-host
+  hostTearDown:
+    workflowRef:
+      name: deprovision-host
+  clusterSetUp: {}
+  clusterTearDown: {}

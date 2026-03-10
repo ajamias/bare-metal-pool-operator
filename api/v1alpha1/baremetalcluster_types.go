@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,8 +36,9 @@ type BareMetalClusterSpec struct {
 	// +listMapKey=hostClass
 	HostSets []HostSet `json:"hostSets"`
 
-	// Workflow specifies the workflow to use for additional Host and Cluster configuration
-	Workflow Workflow `json:"workflow"`
+	// Profile specifies the workflow to use for additional Host and Cluster configuration
+	// +kubebuilder:validation:Optional
+	Profile ProfileSpec `json:"profile,omitempty"`
 }
 
 // BareMetalClusterStatus defines the observed state of BareMetalCluster.
@@ -74,15 +75,14 @@ type HostSet struct {
 	Size int `json:"size"`
 }
 
-type Workflow struct {
+type ProfileSpec struct {
 	// Name is the name of the workflow
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 
 	// Input is a key value map of inputs for the specified workflow
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:pruning:PreserveUnknownFields
-	Input map[string]apiextensionsv1.JSON `json:"input,omitempty"`
+	Input []tektonv1.Param `json:"input,omitempty"`
 }
 
 type TestHostSpec struct {
