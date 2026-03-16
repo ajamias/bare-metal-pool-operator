@@ -65,14 +65,14 @@ spec:
                     hostClass:
                       description: HostClass specifies the class of the host
                       type: string
-                    size:
+                    replicas:
                       description: Size specifies the number of hosts required for
                         this host class
                       minimum: 1
                       type: integer
                   required:
                   - hostClass
-                  - size
+                  - replicas
                   type: object
                 type: array
                 x-kubernetes-list-map-keys:
@@ -188,14 +188,14 @@ spec:
                     hostClass:
                       description: HostClass specifies the class of the host
                       type: string
-                    size:
+                    replicas:
                       description: Size specifies the number of hosts required for
                         this host class
                       minimum: 1
                       type: integer
                   required:
                   - hostClass
-                  - size
+                  - replicas
                   type: object
                 type: array
               lastUpdated:

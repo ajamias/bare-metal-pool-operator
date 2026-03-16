@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	hostv1alpha1 "github.com/DanNiESh/host-operator/api/v1alpha1"
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -59,7 +60,7 @@ type hostOperationResult struct {
 // +kubebuilder:rbac:groups=osac.openshift.io,resources=baremetalclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=osac.openshift.io,resources=baremetalclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=osac.openshift.io,resources=baremetalclusters/finalizers,verbs=update
-// +kubebuilder:rbac:groups=osac.openshift.io,resources=testhosts,verbs=get;list;watch;create;update;patch;delete;deletecollection
+// +kubebuilder:rbac:groups=osac.openshift.io,resources=hosts,verbs=get;list;watch;create;delete;deletecollection
 // +kubebuilder:rbac:groups=tekton.dev,resources=pipelineruns,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -245,13 +246,13 @@ func (r *BareMetalClusterReconciler) handleUpdate(ctx context.Context, bareMetal
 
 	// need to update HostSets even on failure
 	updatedHostSets := make([]v1alpha1.HostSet, 0, len(hostClassToCurrentHostSetSize))
-	for hostClass, size := range hostClassToCurrentHostSetSize {
-		if size <= 0 {
+	for hostClass, replicas := range hostClassToCurrentHostSetSize {
+		if replicas <= 0 {
 			continue
 		}
 		updatedHostSets = append(updatedHostSets, v1alpha1.HostSet{
 			HostClass: hostClass,
-			Size:      size,
+			Replicas:  replicas,
 		})
 	}
 	bareMetalCluster.Status.HostSets = updatedHostSets
@@ -366,13 +367,13 @@ func (r *BareMetalClusterReconciler) handleDeletion(ctx context.Context, bareMet
 
 	// need to update HostSets even on failure
 	updatedHostSets := make([]v1alpha1.HostSet, 0, len(hostClassToCurrentHostSetSize))
-	for hostClass, size := range hostClassToCurrentHostSetSize {
-		if size <= 0 {
+	for hostClass, replicas := range hostClassToCurrentHostSetSize {
+		if replicas <= 0 {
 			continue
 		}
 		updatedHostSets = append(updatedHostSets, v1alpha1.HostSet{
 			HostClass: hostClass,
-			Size:      size,
+			Replicas:  replicas,
 		})
 	}
 	bareMetalCluster.Status.HostSets = updatedHostSets
@@ -436,13 +437,13 @@ func (r *BareMetalClusterReconciler) syncWithInventory(
 	// Calculate delta for each hostSet in spec
 	for _, hostSet := range bareMetalCluster.Spec.HostSets {
 		currentCount := hostClassToCurrentHostSetSize[hostSet.HostClass]
-		delta := hostSet.Size - currentCount
+		delta := hostSet.Replicas - currentCount
 		hostClassToHostSetDelta[hostSet.HostClass] = delta
 		if delta != 0 {
 			requiresUpdate = true
 		}
 		if delta < 0 {
-			hostsToDetach := hostClassToCurrentHosts[hostSet.HostClass][hostSet.Size:]
+			hostsToDetach := hostClassToCurrentHosts[hostSet.HostClass][hostSet.Replicas:]
 			hostClassToHostsToDetach[hostSet.HostClass] = hostsToDetach
 		}
 	}
@@ -531,7 +532,7 @@ func (r *BareMetalClusterReconciler) markAndAttachHost(
 
 	// check if another cluster currently has this host
 	hostName := fmt.Sprintf("host-%s", inventoryHost.NodeId)
-	hostCR := &v1alpha1.TestHost{}
+	hostCR := &hostv1alpha1.Host{}
 	err := r.Get(
 		ctx,
 		client.ObjectKey{
@@ -560,32 +561,31 @@ func (r *BareMetalClusterReconciler) markAndAttachHost(
 		return ctrl.Result{}, err
 	}
 
-	hostSetUpWorkflow := ""
-	hostTearDownWorkflow := ""
-	registeredProfile, ok := profile.Get(bareMetalCluster.Spec.Profile.Name)
-	if ok {
-		hostSetUpWorkflow = registeredProfile.HostSetUpWorkflow.String()
-		hostTearDownWorkflow = registeredProfile.HostTearDownWorkflow.String()
-	}
+	/*
+		hostSetUpWorkflow := ""
+		hostTearDownWorkflow := ""
+		registeredProfile, ok := profile.Get(bareMetalCluster.Spec.Profile.Name)
+		if ok {
+			hostSetUpWorkflow = registeredProfile.HostSetUpWorkflow.String()
+			hostTearDownWorkflow = registeredProfile.HostTearDownWorkflow.String()
+		}
+	*/
 
 	// create Host CR
-	hostCR = &v1alpha1.TestHost{
+	hostCR = &hostv1alpha1.Host{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hostName,
 			Namespace: bareMetalCluster.Namespace,
 			Labels: client.MatchingLabels{
 				"osac.openshift.io/cluster-id": clusterId,
-				"osac.openshift.io/node-id":    inventoryHost.NodeId,
 				"osac.openshift.io/host-class": inventoryHost.HostClass,
 			},
 		},
-		Spec: v1alpha1.TestHostSpec{
-			NodeId:           inventoryHost.NodeId,
-			MatchType:        matchType,
-			HostClass:        inventoryHost.HostClass,
-			Online:           false,
-			SetUpWorkflow:    hostSetUpWorkflow,
-			TearDownWorkflow: hostTearDownWorkflow,
+		Spec: hostv1alpha1.HostSpec{
+			NodeID:    inventoryHost.NodeId,
+			ManagedBy: matchType,
+			HostClass: inventoryHost.HostClass,
+			Online:    false,
 		},
 	}
 	err = controllerutil.SetControllerReference(bareMetalCluster, hostCR, r.Scheme)
@@ -622,7 +622,7 @@ func (r *BareMetalClusterReconciler) unmarkAndDetachHost(
 
 	// check if another cluster currently has this host
 	hostName := fmt.Sprintf("host-%s", inventoryHost.NodeId)
-	hostCR := &v1alpha1.TestHost{}
+	hostCR := &hostv1alpha1.Host{}
 	err := r.Get(
 		ctx,
 		client.ObjectKey{

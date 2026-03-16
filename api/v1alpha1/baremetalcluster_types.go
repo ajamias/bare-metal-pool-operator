@@ -72,7 +72,7 @@ type HostSet struct {
 	// Size specifies the number of hosts required for this host class
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Minimum=1
-	Size int `json:"size"`
+	Replicas int `json:"replicas"`
 }
 
 type ProfileSpec struct {
@@ -83,38 +83,6 @@ type ProfileSpec struct {
 	// Input is a key value map of inputs for the specified workflow
 	// +kubebuilder:validation:Optional
 	Input []tektonv1.Param `json:"input,omitempty"`
-}
-
-type TestHostSpec struct {
-	// rule="self == oldSelf",message="field is immutable"
-	NodeId string `json:"nodeId"`
-
-	// rule="self == oldSelf",message="field is immutable"
-	MatchType string `json:"matchType"`
-
-	// rule="self == oldSelf",message="field is immutable"
-	HostClass string `json:"hostClass"`
-
-	Online bool `json:"online"`
-
-	SetUpWorkflow string `json:"setUpWorkflow"`
-
-	TearDownWorkflow string `json:"tearDownWorkflow"`
-}
-
-// +kubebuilder:object:root=true
-type TestHost struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec TestHostSpec `json:"spec,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-type TestHostList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TestHost `json:"items"`
 }
 
 // +kubebuilder:object:root=true
@@ -145,5 +113,4 @@ type BareMetalClusterList struct {
 
 func init() {
 	SchemeBuilder.Register(&BareMetalCluster{}, &BareMetalClusterList{})
-	SchemeBuilder.Register(&TestHost{}, &TestHostList{})
 }

@@ -3,6 +3,7 @@ module github.com/ajamias/bare-metal-operator
 go 1.24.0
 
 require (
+	github.com/DanNiESh/host-operator v0.0.0-20260310185546-c1e218f08b75
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	github.com/tektoncd/pipeline v1.9.1

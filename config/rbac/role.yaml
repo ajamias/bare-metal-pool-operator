@@ -33,15 +33,13 @@ rules:
 - apiGroups:
   - osac.openshift.io
   resources:
-  - testhosts
+  - hosts
   verbs:
   - create
   - delete
   - deletecollection
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - tekton.dev
