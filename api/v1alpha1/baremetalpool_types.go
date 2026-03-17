@@ -17,24 +17,15 @@ limitations under the License.
 package v1alpha1
 
 import (
-	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // BareMetalPoolSpec defines the desired state of BareMetalPool.
 type BareMetalPoolSpec struct {
-	// MatchType specifies the criteria for selecting hosts
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=baremetal;agent
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="field is immutable"
-	// +kubebuilder:default=baremetal
-	MatchType string `json:"matchType"`
-
 	// HostSets defines the number of hosts needed for each host set type.
+	// The map key is the HostClass and the value is the replicas count.
 	// +kubebuilder:validation:Required
-	// +listType=map
-	// +listMapKey=hostClass
-	HostSets []HostSet `json:"hostSets"`
+	HostSets map[string]int `json:"hostSets"`
 
 	// Profile specifies the workflow to use for additional Host and Cluster configuration
 	// +kubebuilder:validation:Optional
@@ -43,16 +34,10 @@ type BareMetalPoolSpec struct {
 
 // BareMetalPoolStatus defines the observed state of BareMetalPool.
 type BareMetalPoolStatus struct {
-	// MatchType specifies the criteria for selecting hosts
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum=baremetal;agent
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="field is immutable"
-	// +kubebuilder:default=baremetal
-	MatchType string `json:"matchType"`
-
 	// HostSets shows the current allocation of hosts
+	// The map key is the HostClass and the value is the replicas count.
 	// +kubebuilder:validation:Required
-	HostSets []HostSet `json:"hostSets"`
+	HostSets map[string]int `json:"hostSets"`
 
 	// LastUpdated is the timestamp when the status was last updated
 	// +kubebuilder:validation:Optional
@@ -63,18 +48,6 @@ type BareMetalPoolStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
-// HostSet defines a set of hosts with the same class and required count
-type HostSet struct {
-	// HostClass specifies the class of the host
-	// +kubebuilder:validation:Required
-	HostClass string `json:"hostClass"`
-
-	// Size specifies the number of hosts required for this host class
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Minimum=1
-	Replicas int `json:"replicas"`
-}
-
 type ProfileSpec struct {
 	// Name is the name of the workflow
 	// +kubebuilder:validation:Required
@@ -82,15 +55,15 @@ type ProfileSpec struct {
 
 	// Input is a key value map of inputs for the specified workflow
 	// +kubebuilder:validation:Optional
-	Input []tektonv1.Param `json:"input,omitempty"`
+	Input map[string]string `json:"input,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=cr;creq
+// +kubebuilder:resource:shortName=bmp;bmpool
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[?(@.type == 'Ready')].reason"
 // +kubebuilder:printcolumn:name="Hosts Status",type="string",JSONPath=".status.conditions[?(@.type == 'HostsReady')].reason"
-// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.matchType"
+// +kubebuilder:printcolumn:name="Profile",type="string",JSONPath=".spec.profile.name"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // BareMetalPool is the Schema for the baremetalpools API.

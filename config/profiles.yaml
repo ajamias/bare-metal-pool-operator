@@ -1,21 +1,20 @@
 # This is an example config the controller will see in a configmap
 - name: provision-host
   matchHosts:
-    managedBy: none
-  setHostProperties:
-    managedBy: agent
-  expectedInput:
+    managedBy: baremetal
+    provisionState: available
+  inputParameters:
     - name: hostId
       type: string
     - name: imageURL
       type: string
     - name: network
       type: string
-  hostSetUp:
+  hostSetup:
     workflowRef:
       name: provision-host
-  hostTearDown:
+  hostTeardown:
     workflowRef:
       name: deprovision-host
-  clusterSetUp: {}
-  clusterTearDown: {}
+  clusterSetup: {}
+  clusterTeardown: {}

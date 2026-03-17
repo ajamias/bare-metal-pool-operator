@@ -56,17 +56,21 @@ func Get(name string) (Profile, bool) {
 	return pf, ok
 }
 
+type matchExpressions struct {
+	ManagedBy      string `yaml:"managedBy"`
+	ProvisionState string `yaml:"provisionState"`
+}
+
 // Profile represents host and cluster lifecycle workflows
 type Profile struct {
-	Name              string              `yaml:"name"`
-	MatchHosts        map[string]string   `yaml:"matchHosts"`
-	SetHostProperties map[string]string   `yaml:"setHostProperties"`
-	ExpectedInput     tektonv1.ParamSpecs `yaml:"expectedInput"`
+	Name            string              `yaml:"name"`
+	MatchHosts      matchExpressions    `yaml:"matchHosts"`
+	InputParameters tektonv1.ParamSpecs `yaml:"inputParameters"`
 
-	HostSetUpWorkflow       WorkflowReference `yaml:"hostSetUp"`
-	HostTearDownWorkflow    WorkflowReference `yaml:"hostTearDown"`
-	ClusterSetUpWorkflow    WorkflowReference `yaml:"clusterSetUp"`
-	ClusterTearDownWorkflow WorkflowReference `yaml:"clusterTearDown"`
+	HostSetupWorkflow       WorkflowReference `yaml:"hostSetup"`
+	HostTeardownWorkflow    WorkflowReference `yaml:"hostTeardown"`
+	ClusterSetupWorkflow    WorkflowReference `yaml:"clusterSetup"`
+	ClusterTeardownWorkflow WorkflowReference `yaml:"clusterTeardown"`
 }
 
 type WorkflowReference struct {

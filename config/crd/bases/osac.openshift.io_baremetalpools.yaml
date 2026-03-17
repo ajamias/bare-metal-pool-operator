@@ -12,8 +12,8 @@ spec:
     listKind: BareMetalPoolList
     plural: baremetalpools
     shortNames:
-    - cr
-    - creq
+    - bmp
+    - bmpool
     singular: baremetalpool
   scope: Namespaced
   versions:
@@ -24,8 +24,8 @@ spec:
     - jsonPath: .status.conditions[?(@.type == 'HostsReady')].reason
       name: Hosts Status
       type: string
-    - jsonPath: .spec.matchType
-      name: Type
+    - jsonPath: .spec.profile.name
+      name: Profile
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
@@ -56,58 +56,22 @@ spec:
             description: BareMetalPoolSpec defines the desired state of BareMetalPool.
             properties:
               hostSets:
-                description: HostSets defines the number of hosts needed for each
-                  host set type.
-                items:
-                  description: HostSet defines a set of hosts with the same class
-                    and required count
-                  properties:
-                    hostClass:
-                      description: HostClass specifies the class of the host
-                      type: string
-                    replicas:
-                      description: Size specifies the number of hosts required for
-                        this host class
-                      minimum: 1
-                      type: integer
-                  required:
-                  - hostClass
-                  - replicas
-                  type: object
-                type: array
-                x-kubernetes-list-map-keys:
-                - hostClass
-                x-kubernetes-list-type: map
-              matchType:
-                default: baremetal
-                description: MatchType specifies the criteria for selecting hosts
-                enum:
-                - baremetal
-                - agent
-                type: string
-                x-kubernetes-validations:
-                - message: field is immutable
-                  rule: self == oldSelf
+                additionalProperties:
+                  type: integer
+                description: |-
+                  HostSets defines the number of hosts needed for each host set type.
+                  The map key is the HostClass and the value is the replicas count.
+                type: object
               profile:
                 description: Profile specifies the workflow to use for additional
                   Host and Cluster configuration
                 properties:
                   input:
+                    additionalProperties:
+                      type: string
                     description: Input is a key value map of inputs for the specified
                       workflow
-                    items:
-                      description: Param declares an ParamValues to use for the parameter
-                        called name.
-                      properties:
-                        name:
-                          type: string
-                        value:
-                          x-kubernetes-preserve-unknown-fields: true
-                      required:
-                      - name
-                      - value
-                      type: object
-                    type: array
+                    type: object
                   name:
                     description: Name is the name of the workflow
                     type: string
@@ -116,7 +80,6 @@ spec:
                 type: object
             required:
             - hostSets
-            - matchType
             type: object
           status:
             description: BareMetalPoolStatus defines the observed state of BareMetalPool.
@@ -180,42 +143,19 @@ spec:
                   type: object
                 type: array
               hostSets:
-                description: HostSets shows the current allocation of hosts
-                items:
-                  description: HostSet defines a set of hosts with the same class
-                    and required count
-                  properties:
-                    hostClass:
-                      description: HostClass specifies the class of the host
-                      type: string
-                    replicas:
-                      description: Size specifies the number of hosts required for
-                        this host class
-                      minimum: 1
-                      type: integer
-                  required:
-                  - hostClass
-                  - replicas
-                  type: object
-                type: array
+                additionalProperties:
+                  type: integer
+                description: |-
+                  HostSets shows the current allocation of hosts
+                  The map key is the HostClass and the value is the replicas count.
+                type: object
               lastUpdated:
                 description: LastUpdated is the timestamp when the status was last
                   updated
                 format: date-time
                 type: string
-              matchType:
-                default: baremetal
-                description: MatchType specifies the criteria for selecting hosts
-                enum:
-                - baremetal
-                - agent
-                type: string
-                x-kubernetes-validations:
-                - message: field is immutable
-                  rule: self == oldSelf
             required:
             - hostSets
-            - matchType
             type: object
         type: object
     served: true

@@ -29,41 +29,29 @@ const (
 
 // BareMetalPool condition reasons for Ready condition
 const (
-	// BareMetalPoolReasonReady indicates the cluster request is fully ready
+	// BareMetalPoolReasonReady indicates the pool is fully ready
 	BareMetalPoolReasonReady = "Ready"
 
-	// BareMetalPoolReasonProgressing indicates the cluster request is being processed
+	// BareMetalPoolReasonProgressing indicates the pool is being processed
 	BareMetalPoolReasonProgressing = "Progressing"
 
-	// BareMetalPoolReasonFailed indicates the cluster request has failed
+	// BareMetalPoolReasonFailed indicates the pool has failed
 	BareMetalPoolReasonFailed = "Failed"
 
-	// BareMetalPoolReasonDeleting indicates the cluster request is being deleted
+	// BareMetalPoolReasonDeleting indicates the pool is being deleted
 	BareMetalPoolReasonDeleting = "Deleting"
 )
 
 // BareMetalPool condition reasons for HostsReady condition
 const (
-	// BareMetalPoolReasonHostsAvailable indicates all required hosts have been allocated and ready
+	// BareMetalPoolReasonHostsAvailable indicates all required Host CRs have been created
 	BareMetalPoolReasonHostsAvailable = "HostsAvailable"
 
-	// BareMetalPoolReasonHostsProgressing indicates hosts are being processed
+	// BareMetalPoolReasonHostsProgressing indicates Host CRs are being created or deleted
 	BareMetalPoolReasonHostsProgressing = "HostsProgressing"
 
-	// BareMetalPoolReasonHostsDeleting indicates hosts are being deleted/freed
+	// BareMetalPoolReasonHostsDeleting indicates Host CRs are being deleted
 	BareMetalPoolReasonHostsDeleting = "HostsDeleting"
-
-	// BareMetalPoolReasonInventoryServiceFailed indicates communication with inventory service failed
-	BareMetalPoolReasonInventoryServiceFailed = "InventoryServiceFailed"
-
-	// BareMetalPoolReasonHostOperationFailed indicates host attach/detach operations failed
-	BareMetalPoolReasonHostOperationFailed = "HostOperationFailed"
-
-	// BareMetalPoolReasonInsufficientHosts indicates not enough hosts match the criteria
-	BareMetalPoolReasonInsufficientHosts = "InsufficientHosts"
-
-	// BareMetalPoolReasonHostsUnavailable indicates requested hosts are not available
-	BareMetalPoolReasonHostsUnavailable = "HostsUnavailable"
 )
 
 // InitializeStatusConditions initializes the BareMetalPool conditions

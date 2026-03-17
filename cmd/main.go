@@ -18,10 +18,7 @@ package main
 
 import (
 	"crypto/tls"
-	"errors"
 	"flag"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 
@@ -43,10 +40,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	osacopenshiftiov1alpha1 "github.com/ajamias/bare-metal-operator/api/v1alpha1"
-	// +kubebuilder:scaffold:imports
 	"github.com/ajamias/bare-metal-operator/internal/controller"
-	"github.com/ajamias/bare-metal-operator/internal/inventory"
 	"github.com/ajamias/bare-metal-operator/internal/profile"
+	// +kubebuilder:scaffold:imports
 )
 
 var (
@@ -211,45 +207,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// config inventory url
-	osacInventoryEndpoint, ok := os.LookupEnv("OSAC_INVENTORY_URL")
-	if !ok {
-		setupLog.Error(errors.New("unable to set env variables"), "OSAC_INVENTORY_URL not found")
-		os.Exit(1)
-	}
-	osacInventoryUrl, err := url.Parse(osacInventoryEndpoint)
-	if err != nil {
-		setupLog.Error(err, "OSAC_INVENTORY_URL is not a valid URL")
-		os.Exit(1)
-	}
-	if osacInventoryUrl.Scheme != "http" && osacInventoryUrl.Scheme != "https" {
-		setupLog.Error(errors.New("unable to set env variables"), "OSAC_INVENTORY_URL only supports http or https")
-		os.Exit(1)
-	}
-
-	// config management url
-	osacManagementEndpoint, ok := os.LookupEnv("OSAC_MANAGEMENT_URL")
-	if !ok {
-		setupLog.Error(errors.New("unable to set env variables"), "OSAC_MANAGEMENT_URL not found")
-		os.Exit(1)
-	}
-	osacManagementUrl, err := url.Parse(osacManagementEndpoint)
-	if err != nil {
-		setupLog.Error(err, "OSAC_MANAGEMENT_URL is not a valid URL")
-		os.Exit(1)
-	}
-	if osacManagementUrl.Scheme != "http" && osacManagementUrl.Scheme != "https" {
-		setupLog.Error(errors.New("unable to set env variables"), "OSAC_MANAGEMENT_URL only supports http or https")
-		os.Exit(1)
-	}
-
-	// config auth token
-	authToken, ok := os.LookupEnv("OSAC_AUTH_TOKEN")
-	if !ok {
-		setupLog.Error(errors.New("unable to set env variables"), "OSAC_AUTH_TOKEN not found")
-		os.Exit(1)
-	}
-
 	// config profiles
 	profilesPath, ok := os.LookupEnv("OSAC_PROFILES_PATH")
 	if !ok {
@@ -265,12 +222,9 @@ func main() {
 		setupLog.Info("registered profile: " + profiles[i].Name)
 	}
 
-	inventoryClient := inventory.NewInventoryClient(&http.Client{}, osacInventoryUrl, osacManagementUrl, authToken)
-
 	if err := (&controller.BareMetalPoolReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		InventoryClient: inventoryClient,
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BareMetalPool")
 		os.Exit(1)

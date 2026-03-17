@@ -39,8 +39,10 @@ contrib.go.opencensus.io/exporter/prometheus v0.4.2/go.mod h1:dvEHbiKmgvbr5pjaF9
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
-github.com/DanNiESh/host-operator v0.0.0-20260310185546-c1e218f08b75 h1:m/vOxpNM06XcUNyXIyLvoZwiyPaBGkYqoDpsJCJiack=
-github.com/DanNiESh/host-operator v0.0.0-20260310185546-c1e218f08b75/go.mod h1:89nTYIdlUkkKOG5xdYe9NppvfcjJzd30O5ip84veiBI=
+github.com/DanNiESh/host-operator v0.0.0-20260318181456-9f007dd5da5b h1:Toa4//iffAE/PO/gFMYKRVmxbwxQdn4lgwKK0ZCYpqk=
+github.com/DanNiESh/host-operator v0.0.0-20260318181456-9f007dd5da5b/go.mod h1:spvESwnZoH+5ElVJ6SofBUSFfVHI+t3PUZoyyolZdRA=
+github.com/ajamias/bare-metal-host-inventory-operator v0.0.0-20260318141436-c3baef3f69f1 h1:7B/EgZEY+EvD0YCN1+2c2/QXHYpx4KP6LdC+PMAYgMY=
+github.com/ajamias/bare-metal-host-inventory-operator v0.0.0-20260318141436-c3baef3f69f1/go.mod h1:+4+D1RFxIuyI4mn5K5mxbRRmzRAcym3L1C3Ke3ywSZA=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
